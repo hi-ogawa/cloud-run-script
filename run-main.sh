@@ -57,31 +57,30 @@ case $1 in
       "${DEPLOY_OPTS[@]}"
   ;;
 
-  # TODO: APP_NAME-wise filter
   logs)
     shift
     case $1 in
       request)
         gcloud --project "${PROJECT_ID}" logging read \
-        'logName:run.googleapis.com%2Frequest' --format=json \
+        "logName:run.googleapis.com%2Frequest AND resource.labels.service_name=${APP_NAME}" --format=json \
           | jq -r 'reverse | .[] |
-            "\(.timestamp) \(.httpRequest.requestMethod) \(.httpRequest.requestUrl | capture("https://[^/]*(?<path>.*)") | .path) \(.httpRequest.status) \(.httpRequest.responseSize) \(.httpRequest.latency | rtrimstr("s") | .[0:6] | tonumber * 1000 )ms"'
+            "\(.timestamp)\t\(.httpRequest.requestMethod)\t\(.httpRequest.requestUrl | capture("https://[^/]*(?<path>.*)") | .path)\t\(.httpRequest.status)\t\(.httpRequest.responseSize)\t\(.httpRequest.latency | rtrimstr("s") | .[0:6] | tonumber * 1000 )ms"'
       ;;
       # e.g. filter logName:varlog
       filter)
         shift
-        gcloud --project "${PROJECT_ID}" logging read "${1}" --format=json \
+        gcloud --project "${PROJECT_ID}" logging read "${1} AND resource.labels.service_name=${APP_NAME}" --format=json \
           | jq -r 'reverse | .[] | "\(.timestamp) \(.textPayload)"'
       ;;
       jq)
         shift
         gcloud --project "${PROJECT_ID}" logging read \
-          'logName:run.googleapis.com' --format=json \
+          "logName:run.googleapis.com AND resource.labels.service_name=${APP_NAME}" --format=json \
           | jq "${@}"
       ;;
       *)
         gcloud --project "${PROJECT_ID}" logging read \
-          'logName:stdout OR logName:stderr' --format=json \
+          "logName:stdout OR logName:stderr AND resource.labels.service_name=${APP_NAME}" --format=json \
           | jq -r 'reverse | .[] | "\(.timestamp) \(.textPayload)"'
       ;;
     esac
