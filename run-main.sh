@@ -72,6 +72,22 @@ case $1 in
         gcloud --project "${PROJECT_ID}" logging read "${1} AND resource.labels.service_name=${APP_NAME}" --format=json \
           | jq -r 'reverse | .[] | "\(.timestamp) \(.textPayload)"'
       ;;
+      tail)
+        # Limit is 1 read per 1 second: https://cloud.google.com/logging/quotas
+        DELAY=10 # We can't ask too-recent log since they need time to be query-able
+        SLEEP_SEC=2 # refres interval will be longer than SLEEP_SEC due to gcloud request time
+        TO=$(( $(date +%s) - 60 - $DELAY))
+        while true; do
+          FROM=$TO
+          TO=$(( $(date +%s) - $DELAY ))
+          _FROM=$(date --date="@${FROM}" -Is -u)
+          _TO=$(date --date="@${TO}" -Is -u)
+          gcloud --project "${PROJECT_ID}" logging read \
+            "logName:stdout AND timestamp>\"${_FROM}\" AND timestamp<=\"${_TO}\" AND resource.labels.service_name=${APP_NAME}" --format=json \
+            | jq -r 'reverse | .[] | .textPayload'
+          sleep $SLEEP_SEC
+        done
+      ;;
       jq)
         shift
         gcloud --project "${PROJECT_ID}" logging read \
