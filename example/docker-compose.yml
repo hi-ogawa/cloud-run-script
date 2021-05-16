@@ -2,6 +2,8 @@ version: "3.7"
 
 services:
   app:
+    image: cloud-run-test-app
     build:
       context: ./
       dockerfile: ./Dockerfile
+    network_mode: host
