@@ -111,6 +111,12 @@ function Main() {
       echo
     ;;
 
+    # Delete non-latest images
+    prune-images)
+      gcloud container images list-tags "${GCR_IMAGE_NAME}" --filter='tags[0]!=latest' --format='get(digest)' \
+        | xargs -I _arg_ gcloud container images delete "${GCR_IMAGE_NAME}@_arg_" --quiet --force-delete-tags
+    ;;
+
     *) echo ":: Command (${@}) not found" ;;
   esac
 }
